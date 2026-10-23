@@ -95,13 +95,14 @@ main {
   margin: 8px 4px 12px;
   font-weight: 600;
 }
-.standings-title { margin-top: 28px; }
+.standings-title { margin-top: 0; }
 
 .chart-section {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 16px 16px 20px;
+  margin-top: 28px;
   margin-bottom: 8px;
 }
 
