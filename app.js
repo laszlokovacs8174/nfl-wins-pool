@@ -1,23 +1,18 @@
 const REFRESH_MS = 5 * 60 * 1000; // auto-refresh every 5 minutes
-// Preferred: route through the local proxy (server.py) to avoid CORS.
-const ESPN_VIA_PROXY = (id) =>
-  `/espn/apis/site/v2/sports/football/nfl/teams/${id}`;
-// Fallback: hit ESPN directly (works only if CORS is permitted / host proxies).
-const ESPN_DIRECT = (id) =>
-  `https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/${id}`;
 
-// Current-week scoreboard (all matchups) — via proxy, with direct fallback.
-const SCOREBOARD_PROXY = `/espn/apis/site/v2/sports/football/nfl/scoreboard`;
-const SCOREBOARD_DIRECT =
-  `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard`;
+// All data comes from ESPN's public site API. The endpoints we use send
+// permissive CORS headers, so this runs as a pure static site (GitHub Pages)
+// with direct fetches — no server-side proxy required.
+const ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/football/nfl";
+
+// Current-week scoreboard (all matchups).
+const SCOREBOARD_URL = `${ESPN_BASE}/scoreboard`;
+// Per-team season schedule (game-by-game results). We derive BOTH each team's
+// current W-L record AND its weekly win progression from this single endpoint,
+// which avoids the per-team record endpoint (that one lacks CORS headers).
+const SCHEDULE_URL = (id) => `${ESPN_BASE}/teams/${id}/schedule`;
 
 const REGULAR_SEASON_GAMES = 17; // games each NFL team plays in a season
-
-// Per-team season schedule (game-by-game results) — via proxy, direct fallback.
-const SCHEDULE_PROXY = (id) =>
-  `/espn/apis/site/v2/sports/football/nfl/teams/${id}/schedule`;
-const SCHEDULE_DIRECT = (id) =>
-  `https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/${id}/schedule`;
 
 // Distinct colors per owner line in the chart.
 const OWNER_COLORS = [
@@ -43,50 +38,12 @@ function setStatus(kind, text) {
   statusText.textContent = text;
 }
 
-// Fetch one team's record. Returns { wins, losses, ties }.
-// Tries the local proxy first; falls back to a direct ESPN request.
-async function fetchRecord(id) {
-  const res = await fetch(ESPN_VIA_PROXY(id), { cache: "no-store" }).catch(
-    () => null
-  );
-  // If the proxy isn't there (non-JSON / 404), try ESPN directly.
-  if (!res || !res.ok || !/json/.test(res.headers.get("content-type") || "")) {
-    const direct = await fetch(ESPN_DIRECT(id), { cache: "no-store" });
-    if (!direct.ok) throw new Error(`HTTP ${direct.status} for team ${id}`);
-    return parseRecord(await direct.json());
-  }
-  return parseRecord(await res.json());
-}
-
-function parseRecord(data) {
-  const items = data?.team?.record?.items || [];
-  const total = items.find((i) => i.type === "total") || items[0];
-  if (!total) return { wins: 0, losses: 0, ties: 0 };
-  const stats = Object.fromEntries(
-    (total.stats || []).map((s) => [s.name, s.value])
-  );
-  return {
-    wins: stats.wins ?? 0,
-    losses: stats.losses ?? 0,
-    ties: stats.ties ?? 0,
-  };
-}
-
 // Fetch all of this week's games and return:
 //   { week, matchups: { <teamId>: { opponent, opponentAbbr, home, state, detail } } }
 async function fetchScoreboard() {
-  let data = null;
-  const viaProxy = await fetch(SCOREBOARD_PROXY, { cache: "no-store" }).catch(
-    () => null
-  );
-  if (viaProxy && viaProxy.ok && /json/.test(viaProxy.headers.get("content-type") || "")) {
-    data = await viaProxy.json();
-  } else {
-    const direct = await fetch(SCOREBOARD_DIRECT, { cache: "no-store" });
-    if (!direct.ok) throw new Error(`HTTP ${direct.status} for scoreboard`);
-    data = await direct.json();
-  }
-  return parseScoreboard(data);
+  const res = await fetch(SCOREBOARD_URL, { cache: "no-store" });
+  if (!res.ok) throw new Error(`HTTP ${res.status} for scoreboard`);
+  return parseScoreboard(await res.json());
 }
 
 function parseScoreboard(data) {
@@ -114,29 +71,18 @@ function parseScoreboard(data) {
   return { week, matchups };
 }
 
-// Fetch one team's schedule. Returns { week -> wins } cumulative-by-week,
-// plus the highest completed week. Only COMPLETED games (state === "post")
-// count as wins; upcoming/live games are ignored.
-async function fetchTeamWeeklyWins(id) {
-  let data = null;
-  const viaProxy = await fetch(SCHEDULE_PROXY(id), { cache: "no-store" }).catch(
-    () => null
-  );
-  if (
-    viaProxy &&
-    viaProxy.ok &&
-    /json/.test(viaProxy.headers.get("content-type") || "")
-  ) {
-    data = await viaProxy.json();
-  } else {
-    const direct = await fetch(SCHEDULE_DIRECT(id), { cache: "no-store" });
-    if (!direct.ok) throw new Error(`HTTP ${direct.status} for schedule ${id}`);
-    data = await direct.json();
-  }
+// Fetch one team's schedule. Derives BOTH current W-L record and the weekly
+// cumulative-win progression. Only COMPLETED games (state === "post") count;
+// upcoming/live games are ignored.
+async function fetchTeamSchedule(id) {
+  const res = await fetch(SCHEDULE_URL(id), { cache: "no-store" });
+  if (!res.ok) throw new Error(`HTTP ${res.status} for schedule ${id}`);
+  const data = await res.json();
 
-  // winsByWeek[week] = number of wins that team had accumulated through that week
   const winsByWeek = {};
   let cumWins = 0;
+  let wins = 0;
+  let losses = 0;
   const completed = [];
 
   for (const ev of data?.events || []) {
@@ -147,24 +93,26 @@ async function fetchTeamWeeklyWins(id) {
     if (state !== "post") continue; // ignore future / live games
     const me = (comp.competitors || []).find((c) => c.team?.id === id);
     if (!me) continue;
-    if (me.winner === true) cumWins += 1;
+    if (me.winner === true) {
+      cumWins += 1;
+      wins += 1;
+    } else {
+      losses += 1;
+    }
     completed.push({ week, cumWins });
   }
 
-  // Build a week-by-week cumulative series. For each week up to maxWeek,
-  // the value is the team's total wins after all games through that week.
+  // Build a week-by-week cumulative series up to the max completed week.
   let maxWeek = 0;
   for (const c of completed) if (c.week > maxWeek) maxWeek = c.week;
-
-  // cumByWeek[week] = running wins after that week's games
   const cumByWeek = {};
-  for (const c of completed) cumByWeek[c.week] = c.cumWins; // last game of that week wins
+  for (const c of completed) cumByWeek[c.week] = c.cumWins;
   let running = 0;
   for (let w = 1; w <= maxWeek; w++) {
     if (cumByWeek[w] !== undefined) running = cumByWeek[w];
     winsByWeek[w] = running;
   }
-  return { winsByWeek, maxWeek };
+  return { wins, losses, ties: 0, winsByWeek, maxWeek };
 }
 
 async function loadPool() {
@@ -181,44 +129,50 @@ async function loadAll() {
   try {
     if (!pool) pool = await loadPool();
 
-    // Fetch records (per team), the current-week scoreboard, and each team's
-    // schedule (for the weekly chart) — all in parallel.
+    // Fetch the current-week scoreboard and each team's schedule in parallel.
+    // The schedule gives us BOTH the current record and the weekly progression.
     const allTeams = pool.owners.flatMap((o) => o.teams);
-    const [records, scoreboard, weekly] = await Promise.all([
-      Promise.all(
-        allTeams.map(async (t) => {
-          try {
-            return { id: t.id, ...(await fetchRecord(t.id)), error: false };
-          } catch (e) {
-            return { id: t.id, wins: 0, losses: 0, ties: 0, error: true };
-          }
-        })
-      ),
+    const [scoreboard, schedules] = await Promise.all([
       // Scoreboard failure shouldn't break the standings; just hide matchups.
       fetchScoreboard().catch(() => ({ week: null, matchups: {} })),
-      // Schedule failure shouldn't break standings; just hide the chart.
+      // Schedule failure for a team shouldn't break standings; zero it out.
       Promise.all(
         allTeams.map(async (t) => {
           try {
-            const w = await fetchTeamWeeklyWins(t.id);
-            return { id: t.id, ...w };
+            const s = await fetchTeamSchedule(t.id);
+            return { id: t.id, ...s, error: false };
           } catch (e) {
-            return { id: t.id, winsByWeek: {}, maxWeek: 0 };
+            return {
+              id: t.id,
+              wins: 0,
+              losses: 0,
+              ties: 0,
+              winsByWeek: {},
+              maxWeek: 0,
+              error: true,
+            };
           }
         })
       ),
     ]);
-    const recById = Object.fromEntries(records.map((r) => [r.id, r]));
-    const weeklyById = Object.fromEntries(weekly.map((w) => [w.id, w]));
+    const weeklyById = Object.fromEntries(schedules.map((s) => [s.id, s]));
     const matchups = scoreboard.matchups || {};
 
     // Build owner standings.
     const ownerRows = pool.owners.map((o) => {
       const teams = o.teams.map((t) => {
-        const r = recById[t.id] || { wins: 0, losses: 0, ties: 0 };
-        const played = r.wins + r.losses + r.ties;
+        const s = weeklyById[t.id] || { wins: 0, losses: 0, ties: 0 };
+        const played = s.wins + s.losses + s.ties;
         const remaining = Math.max(0, REGULAR_SEASON_GAMES - played);
-        return { ...t, ...r, remaining, matchup: matchups[t.id] || null };
+        return {
+          ...t,
+          wins: s.wins,
+          losses: s.losses,
+          ties: s.ties,
+          remaining,
+          matchup: matchups[t.id] || null,
+          error: s.error,
+        };
       });
       const wins = teams.reduce((s, t) => s + t.wins, 0);
       const losses = teams.reduce((s, t) => s + t.losses, 0);
@@ -245,10 +199,7 @@ async function loadAll() {
     ownerRows.sort((a, b) => b.wins - a.wins || a.losses - b.losses);
 
     // Build weekly cumulative-win series per owner for the chart.
-    const maxWeek = Math.max(
-      0,
-      ...weekly.map((w) => w.maxWeek || 0)
-    );
+    const maxWeek = Math.max(0, ...schedules.map((w) => w.maxWeek || 0));
     const series = pool.owners.map((o, i) => {
       const values = [];
       // Track each team's last known cumulative value so owners who haven't
@@ -275,7 +226,7 @@ async function loadAll() {
     renderChart(series, maxWeek);
     render(ownerRows, scoreboard.week);
 
-    const hadError = records.some((r) => r.error);
+    const hadError = schedules.some((r) => r.error);
     if (hadError) {
       setStatus("error", "Some teams failed to load (showing partial)");
     } else {
@@ -294,25 +245,12 @@ async function loadAll() {
 
 function showError(e) {
   setStatus("error", "Could not load live data");
-  const likelyCors =
-    e instanceof TypeError || /Failed to fetch|NetworkError/i.test(e.message);
   standingsEl.innerHTML = `
     <div class="card" style="padding:24px;line-height:1.6">
       <strong>Couldn't fetch live records.</strong>
-      <p style="color:var(--muted)">
-        ${
-          likelyCors
-            ? "This is usually a browser CORS block when opening the file directly. " +
-              "Run the included local server instead:"
-            : "Details: " + e.message
-        }
-      </p>
-      ${
-        likelyCors
-          ? `<pre style="background:var(--bg);padding:12px;border-radius:8px;overflow:auto">python3 server.py</pre>
-             <p style="color:var(--muted)">then open <code>http://localhost:8000</code></p>`
-          : ""
-      }
+      <p style="color:var(--muted)">Details: ${escapeHtml(e && e.message ? e.message : String(e))}</p>
+      <p style="color:var(--muted)">This can happen if ESPN's API is temporarily
+      unavailable, or if you're offline. Try the "Refresh now" button below.</p>
     </div>`;
 }
 

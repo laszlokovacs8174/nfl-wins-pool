@@ -11,31 +11,18 @@ teams; whoever's teams total the most regular-season wins wins the pool.
 - **Cumulative-wins chart** — weekly progress line chart per owner.
 - Auto-refreshes every 5 minutes (and when you re-focus the tab).
 
-## Run locally
+## Viewing it
+
+### Live (GitHub Pages)
+
+Once deployed, the site is available at:
+
+**https://laszlokovacs8174.github.io/nfl-wins-pool/**
+
+It's a pure static site — the browser fetches data directly from ESPN's public
+API (those endpoints send permissive CORS headers), so no server is needed.
+### Locally
 
 No dependencies required — just Python 3.
 
-```bash
-python3 server.py
-```
 
-Then open **http://localhost:8000**.
-
-`server.py` serves the static files and proxies ESPN requests so the browser
-isn't blocked by CORS.
-
-## Data source
-
-Records, matchups, and per-week results come from ESPN's public site API
-(`site.api.espn.com`). It's unofficial and could change; if it does, the
-parsing lives in a few small functions in `app.js`.
-
-## Structure
-
-| File | Purpose |
-|---|---|
-| `index.html` | Page markup |
-| `styles.css` | Styling |
-| `app.js` | Fetching, computation, standings + chart rendering |
-| `teams.json` | The draft (owners → teams) |
-| `server.py` | Local static server + CORS proxy |
