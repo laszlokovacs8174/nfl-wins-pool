@@ -53,13 +53,23 @@ async function loadPool() {
   return res.json();
 }
 
-// Build the linear pick order. teams.json lists owners in draft order, each
-// with 6 teams picked round-by-round: round r, owner o picks teams[o].teams[r].
+// Build the linear pick order for a SNAKE draft.
+//
+// teams.json lists each owner with their 6 teams in the order they were
+// picked (teams[0] = that owner's 1st-round pick, teams[1] = 2nd-round pick,
+// etc.). Under a snake draft the owner order ALTERNATES each round:
+//   Round 1: Phil -> Ken -> Rick -> Matt -> Juan
+//   Round 2: Juan -> Matt -> Rick -> Ken -> Phil   (reversed)
+//   Round 3: Phil -> ... (forward again), and so on.
+// So on odd-numbered rounds (round index r = 1, 3, 5 ...) we reverse owners.
 function buildPickOrder(pool) {
+  const owners = pool.owners;
   const picks = [];
   for (let r = 0; r < ROUNDS; r++) {
-    for (let o = 0; o < pool.owners.length; o++) {
-      const owner = pool.owners[o];
+    const order =
+      r % 2 === 0 ? owners : [...owners].reverse();
+    for (let i = 0; i < order.length; i++) {
+      const owner = order[i];
       const team = owner.teams[r];
       if (team) {
         picks.push({ round: r + 1, owner: owner.name, team });
