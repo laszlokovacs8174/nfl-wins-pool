@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NFL Wins Pool – Draft Results</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="page-header">
+    <h1>Draft Results</h1>
+    <p class="subtitle">What we drafted vs. what we should have drafted (by current wins)</p>
+    <div class="status" id="status">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">Loading…</span>
+    </div>
+    <p class="nav-links">
+      <a href="index.html">&larr; Standings</a>
+      <span class="nav-sep">·</span>
+      <a href="draft.html" class="active">Draft results</a>
+    </p>
+  </header>
+
+  <main>
+    <section class="chart-section">
+      <h2 class="section-title">Hindsight leaderboard</h2>
+      <p class="section-hint">
+        If every owner had drafted the best teams still available at their
+        picks, these would be the totals.
+      </p>
+      <div id="hindsightSummary" class="hindsight-summary"></div>
+    </section>
+
+    <h2 class="section-title standings-title">Pick-by-pick</h2>
+    <p class="section-hint">
+      Each row is one draft slot. “Actual” is who was taken; “Best available”
+      is the highest-win team still on the board at that pick.
+    </p>
+    <div id="draftTable" class="draft-table-wrap"></div>
+  </main>
+
+  <footer class="page-footer">
+    <span id="updated">—</span>
+    <button id="refreshBtn" type="button">Refresh now</button>
+  </footer>
+
+  <script src="draft.js"></script>
+</body>
+</html>
