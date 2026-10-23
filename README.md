@@ -25,11 +25,20 @@ wins the pool.
   actually taken and the best available team on the board at that slot.
 - Auto-refreshes every 5 minutes.
 
+### Weekly scoreboard page (`scoreboard.html`)
+
+- **This week's games** for the whole league, each team tagged with its pool
+  owner (color-coded) or "undrafted".
+- **Live/final/scheduled** status, scores, records, venue, and broadcast.
+- **Week navigation** — step backward/forward through the season.
+- Auto-refreshes every 5 minutes.
+
 ## Data sources
 
 All data comes from ESPN's public site API, fetched directly by the browser:
 
 - **Current-week scoreboard** — `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard`
+  (the scoreboard page appends `?week=N&seasontype=T` for week navigation)
 - **Per-team schedule** — `https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/{id}/schedule`
 
 Current W-L records and the weekly cumulative-win progression are both derived
@@ -67,4 +76,28 @@ The site is fully static, but browsers can block cross-origin requests to
 ESPN from a `file://` page, so serve it over HTTP. A tiny dependency-free
 Python 3 server is included (it also proxies ESPN at `/espn/...` to sidestep
 any CORS issues):
+
+```bash
+python3 server.py          # http://localhost:8000
+python3 server.py 9000     # custom port
+```
+
+Then open http://localhost:8000/ for the standings page (or
+http://localhost:8000/scoreboard.html and
+http://localhost:8000/draft.html for the other pages).
+
+Alternatively, any static file server works (e.g. `python3 -m http.server`),
+though the `/espn/` proxy is only provided by `server.py`.
+
+## Project structure
+
+| File | Purpose |
+| --- | --- |
+| `index.html` / `app.js` | Standings page: live records, matchups, max wins, cumulative-wins chart. |
+| `scoreboard.html` / `scoreboard.js` | Weekly scoreboard page: this week's games with owner tags and week nav. |
+| `draft.html` / `draft.js` | Draft results page: hindsight leaderboard and pick-by-pick view. |
+| `styles.css` | Shared styling for all pages. |
+| `teams.json` | Pool configuration: owners, their teams, and undrafted teams. |
+| `server.py` | Optional local dev server with an ESPN `/espn/` proxy. |
+
 

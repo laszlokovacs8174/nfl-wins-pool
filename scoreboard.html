@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NFL Wins Pool – Weekly Scoreboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="page-header">
+    <h1>Weekly Scoreboard</h1>
+    <p class="subtitle">This week's games, with each team's pool owner</p>
+    <div class="status" id="status">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">Loading…</span>
+    </div>
+    <p class="nav-links">
+      <a href="index.html">Standings</a>
+      <span class="nav-sep">·</span>
+      <a href="scoreboard.html" class="active">Scoreboard</a>
+      <span class="nav-sep">·</span>
+      <a href="draft.html">Draft results</a>
+    </p>
+  </header>
+
+  <main>
+    <div class="week-nav">
+      <button id="prevWeek" type="button">&#9664; Prev</button>
+      <h2 class="section-title standings-title" id="weekTitle">Scoreboard</h2>
+      <button id="nextWeek" type="button">Next &#9654;</button>
+    </div>
+    <div id="scoreboard" class="scoreboard"></div>
+  </main>
+
+  <footer class="page-footer">
+    <span id="updated">—</span>
+    <button id="refreshBtn" type="button">Refresh now</button>
+  </footer>
+
+  <script src="scoreboard.js"></script>
+</body>
+</html>
