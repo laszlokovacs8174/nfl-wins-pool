@@ -30,6 +30,8 @@ wins the pool.
 - **This week's games** for the whole league, each team tagged with its pool
   owner (color-coded) or "undrafted".
 - **Live/final/scheduled** status, scores, records, venue, and broadcast.
+- **Bye weeks** — teams sitting out this week are listed separately with their
+  owner, so an owner's full lineup is always accounted for.
 - **Week navigation** — step backward/forward through the season.
 - Auto-refreshes every 5 minutes.
 

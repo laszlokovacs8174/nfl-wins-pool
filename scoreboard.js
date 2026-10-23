@@ -34,6 +34,7 @@ const weekTitleEl = document.getElementById("weekTitle");
 
 let pool = null; // loaded teams.json
 let ownerByTeamId = {}; // teamId -> owner name
+let teamById = {}; // teamId -> { name, abbr, id, owner }
 let refreshTimer = null;
 
 // Currently displayed week + season type. When both are null we simply show
@@ -53,10 +54,10 @@ async function loadPool() {
   return res.json();
 }
 
-function buildOwnerMap(pool) {
+function buildTeamLookup(pool) {
   const map = {};
   for (const o of pool.owners) {
-    for (const t of o.teams) map[t.id] = o.name;
+    for (const t of o.teams) map[t.id] = { ...t, owner: o.name };
   }
   return map;
 }
@@ -149,17 +150,18 @@ function teamRow(side, game) {
   const ownerChip = owner
     ? `<span class="sb-owner"${ownerColorStyle(owner)}>${escapeHtml(owner)}</span>`
     : `<span class="sb-owner sb-owner-none">undrafted</span>`;
+  const score = game.state === "pre" ? "" : formatScore(side.score);
   return `
     <div class="sb-team ${cls.join(" ")}">
-      <img class="sb-logo" src="${logoUrl(side.abbr)}" alt="" loading="lazy" width="30" height="30" />
+      <img class="sb-logo" src="${logoUrl(side.abbr)}" alt="${escapeHtml(side.abbr || "")}" loading="lazy" width="32" height="32" />
       <span class="sb-team-info">
-        <span class="sb-team-name">${escapeHtml(side.name)}</span>
-        <span class="sb-team-meta">
-          ${side.record ? `<span class="sb-record">${escapeHtml(side.record)}</span>` : ""}
-          ${ownerChip}
+        <span class="sb-team-line">
+          <span class="sb-team-name">${escapeHtml(side.short || side.name)}</span>
+          <span class="sb-record">${escapeHtml(side.record || "")}</span>
         </span>
+        <span class="sb-team-meta">${ownerChip}</span>
       </span>
-      <span class="sb-score">${game.state === "pre" ? "" : formatScore(side.score)}</span>
+      <span class="sb-score">${score}</span>
     </div>`;
 }
 
@@ -171,10 +173,11 @@ function ownerColorStyle(owner) {
 function gameCard(game) {
   const stateClass =
     game.state === "in" ? "sb-live" : game.state === "post" ? "sb-final" : "sb-pre";
-  const meta = [];
-  if (game.state === "pre" && game.detail) meta.push(game.detail);
-  if (game.venue) meta.push(game.venue);
-  if (game.broadcast) meta.push(game.broadcast);
+  // Build the footer meta WITHOUT duplicating the kickoff time (which is the
+  // status label for scheduled games). Only venue + broadcast go down here.
+  const footer = [];
+  if (game.venue) footer.push(game.venue);
+  if (game.broadcast) footer.push(game.broadcast);
   return `
     <div class="sb-game ${stateClass}">
       <div class="sb-status ${game.state}">
@@ -182,13 +185,56 @@ function gameCard(game) {
       </div>
       <div class="sb-teams">
         ${teamRow(game.away, game)}
+        <div class="sb-divider"><span>at</span></div>
         ${teamRow(game.home, game)}
       </div>
-      ${meta.length ? `<div class="sb-meta">${meta.map(escapeHtml).join(" · ")}</div>` : ""}
+      ${footer.length ? `<div class="sb-meta">${footer.map(escapeHtml).join(" · ")}</div>` : ""}
     </div>`;
 }
 
-function render(games, week, seasonType) {
+// Determine which pool teams (owners') are on a bye: not playing this week.
+// Returns entries sorted by owner, then team name.
+function computeByes(games) {
+  const playing = new Set();
+  for (const g of games) {
+    if (g.away?.id != null) playing.add(g.away.id);
+    if (g.home?.id != null) playing.add(g.home.id);
+  }
+  const byes = [];
+  for (const id of Object.keys(teamById)) {
+    if (playing.has(id)) continue;
+    const t = teamById[id];
+    if (!t.owner) continue; // ignore undrafted teams for the bye list
+    byes.push({ id, name: t.name, abbr: t.abbr, owner: t.owner });
+  }
+  byes.sort((a, b) => a.owner.localeCompare(b.owner) || a.name.localeCompare(b.name));
+  return byes;
+}
+
+function byeCard(b) {
+  const ownerChip = `<span class="sb-owner"${ownerColorStyle(b.owner)}>${escapeHtml(b.owner)}</span>`;
+  return `
+    <div class="sb-bye">
+      <img class="sb-logo" src="${logoUrl(b.abbr)}" alt="${escapeHtml(b.abbr || "")}" loading="lazy" width="28" height="28" />
+      <span class="sb-bye-info">
+        <span class="sb-team-name">${escapeHtml(b.name)}</span>
+        <span class="sb-team-meta">${ownerChip}</span>
+      </span>
+    </div>`;
+}
+
+function byeSection(byes) {
+  if (!byes.length) return "";
+  return `
+    <section class="sb-bye-section">
+      <h3 class="section-title sb-bye-title">On bye this week
+        <span class="sb-bye-count">${byes.length}</span>
+      </h3>
+      <div class="sb-byes">${byes.map(byeCard).join("")}</div>
+    </section>`;
+}
+
+function render(games, byes, week, seasonType) {
   if (week != null) {
     const prefix = seasonType && seasonType !== 2 ? "Preseason/Postseason · " : "";
     weekTitleEl.textContent = `${prefix}Week ${week} scoreboard`;
@@ -196,11 +242,10 @@ function render(games, week, seasonType) {
     weekTitleEl.textContent = "Scoreboard";
   }
 
-  if (!games.length) {
-    boardEl.innerHTML = `<div class="chart-empty">No games for this week.</div>`;
-    return;
-  }
-  boardEl.innerHTML = games.map(gameCard).join("");
+  const gamesHtml = games.length
+    ? games.map(gameCard).join("")
+    : `<div class="chart-empty">No games for this week.</div>`;
+  boardEl.innerHTML = gamesHtml + byeSection(byes);
 }
 
 async function loadAll() {
@@ -209,11 +254,14 @@ async function loadAll() {
   try {
     if (!pool) {
       pool = await loadPool();
-      ownerByTeamId = buildOwnerMap(pool);
+      teamById = buildTeamLookup(pool);
+      ownerByTeamId = {};
+      for (const id of Object.keys(teamById)) ownerByTeamId[id] = teamById[id].owner;
     }
 
     const data = await fetchScoreboard(viewWeek, viewSeasonType);
     const games = parseGames(data);
+    const byes = computeByes(games);
 
     // Pin to ESPN's resolved week/season type on first load so prev/next work.
     if (viewWeek == null && data?.week?.number != null) {
@@ -223,7 +271,7 @@ async function loadAll() {
       viewSeasonType = data.season.type;
     }
 
-    render(games, data?.week?.number ?? viewWeek, data?.season?.type ?? viewSeasonType);
+    render(games, byes, data?.week?.number ?? viewWeek, data?.season?.type ?? viewSeasonType);
     renderWeekControls(data);
 
     setStatus("live", "Live · auto-refreshing");
