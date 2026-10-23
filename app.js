@@ -89,15 +89,25 @@ async function fetchTeamSchedule(id) {
   let losses = 0;
   let ties = 0;
   const completed = [];
+  // Opponent team ids for games NOT yet final (pre/live) — used to detect
+  // games where two of the same owner's teams play each other.
+  const remainingOpponents = [];
 
   for (const ev of data?.events || []) {
     const week = ev?.week?.number;
     if (!week) continue;
     const comp = ev.competitions?.[0];
     const state = comp?.status?.type?.state;
-    if (state !== "post") continue; // ignore future / live games
     const me = (comp.competitors || []).find((c) => c.team?.id === id);
     if (!me) continue;
+    if (state !== "post") {
+      // Not final yet: record the opponent so we can account for head-to-head
+      // matchups among the same owner's teams when computing max wins.
+      const rOpp = (comp.competitors || []).find((c) => c !== me);
+      const oppId = rOpp?.team?.id;
+      if (oppId) remainingOpponents.push(oppId);
+      continue;
+    }
     // ESPN sets winner=false for BOTH sides of a tie, so detect ties by
     // comparing scores (a tie is a game where neither side won).
     const opp = (comp.competitors || []).find((c) => c !== me);
@@ -129,7 +139,7 @@ async function fetchTeamSchedule(id) {
     if (cumByWeek[w] !== undefined) running = cumByWeek[w];
     winsByWeek[w] = running;
   }
-  return { wins, losses, ties, winsByWeek, maxWeek };
+  return { wins, losses, ties, winsByWeek, maxWeek, remainingOpponents };
 }
 
 async function loadPool() {
@@ -166,6 +176,7 @@ async function loadAll() {
               ties: 0,
               winsByWeek: {},
               maxWeek: 0,
+              remainingOpponents: [],
               error: true,
             };
           }
@@ -177,6 +188,7 @@ async function loadAll() {
 
     // Build owner standings.
     const ownerRows = pool.owners.map((o) => {
+      const ownTeamIds = new Set(o.teams.map((t) => t.id));
       const teams = o.teams.map((t) => {
         const s = weeklyById[t.id] || { wins: 0, losses: 0, ties: 0 };
         const played = s.wins + s.losses + s.ties;
@@ -199,6 +211,27 @@ async function loadAll() {
         0
       );
       const remaining = teams.reduce((s, t) => s + t.remaining, 0);
+
+      // Count remaining games where two of THIS owner's teams play each other.
+      // Each such game guarantees one owner-team loss, so it can't contribute
+      // a win to the owner — subtract one per head-to-head matchup. We count
+      // it from one side only by requiring the opponent id to be a higher
+      // team id than the current team, avoiding double counting. Team ids are
+      // numeric strings, so compare them numerically.
+      let headToHead = 0;
+      for (const t of o.teams) {
+        const ro = weeklyById[t.id]?.remainingOpponents || [];
+        for (const oppId of ro) {
+          if (
+            oppId !== t.id &&
+            ownTeamIds.has(oppId) &&
+            Number(oppId) > Number(t.id)
+          ) {
+            headToHead += 1;
+          }
+        }
+      }
+
       const anyError = teams.some((t) => t.error);
       return {
         name: o.name,
@@ -208,6 +241,10 @@ async function loadAll() {
         ties,
         gamesPlayed,
         remaining,
+        headToHead,
+        // Ceiling if every remaining game is a win, minus any head-to-head
+        // games among the owner's own teams (one of the two must lose).
+        maxWins: wins + remaining - headToHead,
         anyError,
       };
     });
@@ -476,7 +513,7 @@ function render(rows, week) {
       <div class="rank${rankClass}">${rank}</div>
       <div class="owner">
         <span class="owner-name">${escapeHtml(r.name)}</span>
-        <span class="owner-remaining">${r.remaining} games left</span>
+        <span class="owner-remaining">${r.remaining} games left · ${r.maxWins} max</span>
         <span class="owner-logos">${logoStrip}</span>
       </div>
       <div class="wins">${r.wins}<span class="lbl">wins</span></div>

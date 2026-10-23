@@ -9,6 +9,9 @@ wins the pool.
 
 - **Live standings** — owners ranked by total wins across their 6 teams.
 - **Games remaining** per owner (17-game regular season).
+- **Max potential wins** per owner — current wins plus every remaining game,
+  minus any remaining games where two of the owner's own teams play each other
+  (one of them is guaranteed to lose, so those can't both become wins).
 - **Current-week matchups** for every team (home/away, live/final/time).
 - **Cumulative-wins chart** — weekly progress line chart per owner.
 - Auto-refreshes every 5 minutes (and when you re-focus the tab).
