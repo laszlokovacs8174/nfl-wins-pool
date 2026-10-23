@@ -96,8 +96,15 @@ async function loadAll() {
   try {
     const pool = await loadPool();
 
+    // All NFL teams relevant to the pool: everyone who was drafted PLUS the
+    // undrafted teams (e.g. Jets, Browns). The hindsight "best available"
+    // pool must include the undrafted teams too — otherwise it could never
+    // suggest them.
+    const undrafted = pool.undrafted || [];
+    const draftedTeams = pool.owners.flatMap((o) => o.teams);
+    const allTeams = [...draftedTeams, ...undrafted];
+
     // Fetch records for all teams in parallel.
-    const allTeams = pool.owners.flatMap((o) => o.teams);
     const recArr = await Promise.all(
       allTeams.map(async (t) => {
         try {

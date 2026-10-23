@@ -55,5 +55,10 @@
         { "name": "Atlanta Falcons", "abbr": "ATL", "id": "1" }
       ]
     }
+  ],
+  "undrafted": [
+    { "name": "Cleveland Browns", "abbr": "CLE", "id": "5" },
+    { "name": "New York Jets", "abbr": "NYJ", "id": "20" }
   ]
 }
+
