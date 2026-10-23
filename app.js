@@ -87,6 +87,7 @@ async function fetchTeamSchedule(id) {
   let cumWins = 0;
   let wins = 0;
   let losses = 0;
+  let ties = 0;
   const completed = [];
 
   for (const ev of data?.events || []) {
@@ -97,9 +98,21 @@ async function fetchTeamSchedule(id) {
     if (state !== "post") continue; // ignore future / live games
     const me = (comp.competitors || []).find((c) => c.team?.id === id);
     if (!me) continue;
+    // ESPN sets winner=false for BOTH sides of a tie, so detect ties by
+    // comparing scores (a tie is a game where neither side won).
+    const opp = (comp.competitors || []).find((c) => c !== me);
+    const myScore = Number(me?.score?.value);
+    const oppScore = Number(opp?.score?.value);
+    const isTie =
+      Number.isFinite(myScore) &&
+      Number.isFinite(oppScore) &&
+      myScore === oppScore;
+
     if (me.winner === true) {
       cumWins += 1;
       wins += 1;
+    } else if (isTie) {
+      ties += 1;
     } else {
       losses += 1;
     }
@@ -116,7 +129,7 @@ async function fetchTeamSchedule(id) {
     if (cumByWeek[w] !== undefined) running = cumByWeek[w];
     winsByWeek[w] = running;
   }
-  return { wins, losses, ties: 0, winsByWeek, maxWeek };
+  return { wins, losses, ties, winsByWeek, maxWeek };
 }
 
 async function loadPool() {

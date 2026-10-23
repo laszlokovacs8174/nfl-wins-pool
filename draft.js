@@ -41,15 +41,25 @@ async function fetchRecord(id) {
   const data = await res.json();
   let wins = 0;
   let losses = 0;
+  let ties = 0;
   for (const ev of data?.events || []) {
     const comp = ev.competitions?.[0];
     if (comp?.status?.type?.state !== "post") continue;
     const me = (comp.competitors || []).find((c) => c.team?.id === id);
     if (!me) continue;
+    // ESPN sets winner=false for both sides of a tie; detect ties by score.
+    const opp = (comp.competitors || []).find((c) => c !== me);
+    const myScore = Number(me?.score?.value);
+    const oppScore = Number(opp?.score?.value);
+    const isTie =
+      Number.isFinite(myScore) &&
+      Number.isFinite(oppScore) &&
+      myScore === oppScore;
     if (me.winner === true) wins += 1;
+    else if (isTie) ties += 1;
     else losses += 1;
   }
-  return { wins, losses, ties: 0 };
+  return { wins, losses, ties };
 }
 
 async function loadPool() {
