@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NFL Wins Pool – Standings</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="page-header">
+    <h1>NFL Wins Pool</h1>
+    <p class="subtitle">Most regular-season wins across your 6 teams wins the pool</p>
+    <div class="status" id="status">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">Loading…</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="chart-section">
+      <h2 class="section-title">Cumulative wins by week</h2>
+      <div id="chart" class="chart"></div>
+    </section>
+
+    <h2 class="section-title standings-title">Standings</h2>
+    <div id="standings" class="standings"></div>
+  </main>
+
+  <footer class="page-footer">
+    <span id="updated">—</span>
+    <button id="refreshBtn" type="button">Refresh now</button>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

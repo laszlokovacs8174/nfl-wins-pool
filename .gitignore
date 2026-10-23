@@ -1,0 +1,8 @@
+# Local / OS cruft
+.DS_Store
+__pycache__/
+*.pyc
+
+# Editor
+.vscode/
+.idea/

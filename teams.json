@@ -1,0 +1,59 @@
+{
+  "owners": [
+    {
+      "name": "Phil",
+      "teams": [
+        { "name": "Denver Broncos", "abbr": "DEN", "id": "7" },
+        { "name": "New England Patriots", "abbr": "NE", "id": "17" },
+        { "name": "Chicago Bears", "abbr": "CHI", "id": "3" },
+        { "name": "Pittsburgh Steelers", "abbr": "PIT", "id": "23" },
+        { "name": "Indianapolis Colts", "abbr": "IND", "id": "11" },
+        { "name": "Miami Dolphins", "abbr": "MIA", "id": "15" }
+      ]
+    },
+    {
+      "name": "Ken",
+      "teams": [
+        { "name": "Los Angeles Rams", "abbr": "LAR", "id": "14" },
+        { "name": "Los Angeles Chargers", "abbr": "LAC", "id": "24" },
+        { "name": "Dallas Cowboys", "abbr": "DAL", "id": "6" },
+        { "name": "Minnesota Vikings", "abbr": "MIN", "id": "16" },
+        { "name": "New Orleans Saints", "abbr": "NO", "id": "18" },
+        { "name": "Arizona Cardinals", "abbr": "ARI", "id": "22" }
+      ]
+    },
+    {
+      "name": "Rick",
+      "teams": [
+        { "name": "Seattle Seahawks", "abbr": "SEA", "id": "26" },
+        { "name": "Philadelphia Eagles", "abbr": "PHI", "id": "21" },
+        { "name": "Cincinnati Bengals", "abbr": "CIN", "id": "4" },
+        { "name": "Tampa Bay Buccaneers", "abbr": "TB", "id": "27" },
+        { "name": "Washington Commanders", "abbr": "WSH", "id": "28" },
+        { "name": "Las Vegas Raiders", "abbr": "LV", "id": "13" }
+      ]
+    },
+    {
+      "name": "Matt",
+      "teams": [
+        { "name": "Baltimore Ravens", "abbr": "BAL", "id": "33" },
+        { "name": "Detroit Lions", "abbr": "DET", "id": "8" },
+        { "name": "Kansas City Chiefs", "abbr": "KC", "id": "12" },
+        { "name": "San Francisco 49ers", "abbr": "SF", "id": "25" },
+        { "name": "New York Giants", "abbr": "NYG", "id": "19" },
+        { "name": "Tennessee Titans", "abbr": "TEN", "id": "10" }
+      ]
+    },
+    {
+      "name": "Juan",
+      "teams": [
+        { "name": "Buffalo Bills", "abbr": "BUF", "id": "2" },
+        { "name": "Houston Texans", "abbr": "HOU", "id": "34" },
+        { "name": "Green Bay Packers", "abbr": "GB", "id": "9" },
+        { "name": "Jacksonville Jaguars", "abbr": "JAX", "id": "30" },
+        { "name": "Carolina Panthers", "abbr": "CAR", "id": "29" },
+        { "name": "Atlanta Falcons", "abbr": "ATL", "id": "1" }
+      ]
+    }
+  ]
+}
