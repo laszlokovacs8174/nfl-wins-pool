@@ -8,6 +8,11 @@ const ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/football/nfl";
 const SCHEDULE_URL = (id) => `${ESPN_BASE}/teams/${id}/schedule`;
 
 const ROUNDS = 6; // 6 picks per owner
+
+// Public ESPN CDN logos keyed by lowercase team abbreviation (e.g. "sf").
+const logoUrl = (abbr) =>
+  abbr ? `https://a.espncdn.com/i/teamlogos/nfl/500/${abbr.toLowerCase()}.png` : "";
+
 const OWNER_COLORS = {
   Phil: "#3fa9f5",
   Ken: "#f5c542",
@@ -204,6 +209,11 @@ function renderSummary(stats) {
 }
 
 function renderTable(picks) {
+  const logoImg = (abbr, cls) =>
+    abbr
+      ? `<img class="${cls}" src="${logoUrl(abbr)}" alt="" loading="lazy" width="22" height="22" />`
+      : "";
+
   const rows = picks
     .map((p) => {
       const same = p.best && p.best.id === p.team.id;
@@ -216,11 +226,20 @@ function renderTable(picks) {
             <span class="hs-dot" style="background:${OWNER_COLORS[p.owner] || "#888"}"></span>
             ${escapeHtml(p.owner)}
           </td>
-          <td>${escapeHtml(p.team.name)} <span class="rec-mini">${actualRec}</span></td>
-          <td class="best-cell">
-            ${p.best ? escapeHtml(p.best.name) : "—"}
-            <span class="rec-mini">${bestRec}</span>
-            ${same ? '<span class="same-tag">kept</span>' : ""}
+          <td class="team-cell">
+            <span class="team-cell-inner">
+              ${logoImg(p.team.abbr, "pick-logo")}
+              <span>${escapeHtml(p.team.name)} <span class="rec-mini">${actualRec}</span></span>
+            </span>
+          </td>
+          <td class="best-cell team-cell">
+            <span class="team-cell-inner">
+              ${p.best ? logoImg(p.best.abbr, "pick-logo") : ""}
+              <span>${p.best ? escapeHtml(p.best.name) : "—"}
+                <span class="rec-mini">${bestRec}</span>
+                ${same ? '<span class="same-tag">kept</span>' : ""}
+              </span>
+            </span>
           </td>
         </tr>`;
     })

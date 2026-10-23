@@ -14,6 +14,10 @@ const SCHEDULE_URL = (id) => `${ESPN_BASE}/teams/${id}/schedule`;
 
 const REGULAR_SEASON_GAMES = 17; // games each NFL team plays in a season
 
+// Public ESPN CDN logos keyed by lowercase team abbreviation (e.g. "sf").
+const logoUrl = (abbr) =>
+  abbr ? `https://a.espncdn.com/i/teamlogos/nfl/500/${abbr.toLowerCase()}.png` : "";
+
 // Distinct colors per owner line in the chart.
 const OWNER_COLORS = [
   "#3fa9f5", // blue
@@ -468,9 +472,15 @@ function render(rows, week) {
         const oppLine = m
           ? `<span class="team-opp">${escapeHtml(matchupText(m))} ${matchupBadge(m)}</span>`
           : `<span class="team-opp muted">No game this week / bye</span>`;
+        const logo = t.abbr
+          ? `<img class="team-logo" src="${logoUrl(t.abbr)}" alt="" loading="lazy" width="26" height="26" />`
+          : "";
         tEl.innerHTML = `
           <div class="team-main">
-            <span class="team-name">${escapeHtml(t.name)}</span>
+            <span class="team-name-wrap">
+              ${logo}
+              <span class="team-name">${escapeHtml(t.name)}</span>
+            </span>
             <span class="team-stats">
               <span class="rec ${recordClass(t.wins, t.losses)}">${rec}</span>
               <span class="t-remaining">${t.remaining} left</span>
