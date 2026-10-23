@@ -448,11 +448,23 @@ function render(rows, week) {
     const row = document.createElement("div");
     row.className = "row";
     const rankClass = rank <= 3 ? ` r${rank}` : "";
+    // Compact strip of this owner's team logos, ordered by wins desc so it
+    // reads as a quick visual summary.
+    const logoStrip = [...r.teams]
+      .sort((a, b) => b.wins - a.wins)
+      .map(
+        (t) =>
+          `<img class="owner-logo" src="${logoUrl(t.abbr)}" alt="${escapeHtml(
+            t.abbr || ""
+          )}" title="${escapeHtml(t.name)}" loading="lazy" width="22" height="22" />`
+      )
+      .join("");
     row.innerHTML = `
       <div class="rank${rankClass}">${rank}</div>
       <div class="owner">
         <span class="owner-name">${escapeHtml(r.name)}</span>
         <span class="owner-remaining">${r.remaining} games left</span>
+        <span class="owner-logos">${logoStrip}</span>
       </div>
       <div class="wins">${r.wins}<span class="lbl">wins</span></div>
       <div class="chevron">&#9654;</div>
